@@ -177,6 +177,10 @@
 				<i class="icons clear-icon" onclick="clean(this);">&#xe38f;</i>
 				<i class="icons search-icon" style="cursor:pointer;">&#xe0a1;</i>
 				<div id="filters" class="filter fade">
+					<label id="filterFav" title="Favorites only" class="check fchkl">&#11088;
+						<input type="checkbox" id="filterFavChk" onchange="toggleOnlyFavorites(this);">
+						<span class="checkmark"></span>
+					</label>
 					<label id="filterPal" title="Uses palette" class="check fchkl">&#x1F3A8;
 						<input type="checkbox" data-flt="&#x1F3A8;" onchange="filterFx();">
 						<span class="checkmark"></span>
