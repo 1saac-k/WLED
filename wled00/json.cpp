@@ -433,6 +433,17 @@ bool deserializeState(JsonObject root, byte callMode, byte presetId)
     if (presetsModifiedTime == 0) presetsModifiedTime = timein;
   }
 
+  // user-favorited effect ids (bitmap-backed). Accepts a full array; absent = no change.
+  JsonArray fxFavArr = root[F("fxfav")];
+  if (!fxFavArr.isNull()) {
+    for (size_t i = 0; i < 8; i++) favoriteFxMask[i] = 0;
+    for (JsonVariant v : fxFavArr) {
+      int id = v.as<int>();
+      if (id >= 0 && id < 256) setFxFavorite((uint8_t)id, true);
+    }
+    configNeedsWrite = true;
+  }
+
   if (root[F("psave")].isNull()) doReboot = root[F("rb")] | doReboot;
 
   // do not allow changing main segment while in realtime mode (may get odd results else)
@@ -773,6 +784,11 @@ void serializeInfo(JsonObject root)
   #endif
 
   root[F("fxcount")] = strip.getModeCount();
+  // user-favorited effect ids (bitmap-backed, capped at 256)
+  JsonArray fxFav = root.createNestedArray(F("fxfav"));
+  uint16_t fxMax = strip.getModeCount();
+  if (fxMax > 256) fxMax = 256;
+  for (uint16_t id = 0; id < fxMax; id++) if (isFxFavorite((uint8_t)id)) fxFav.add((uint8_t)id);
   root[F("palcount")] = getPaletteCount();
   root[F("cpalcount")] = customPalettes.size();   // number of user custom palettes (includes gray placeholders)
   root[F("umpalcount")] = usermodPalettes.size(); // number of usermod-registered palettes
@@ -1186,15 +1202,10 @@ void serializePins(JsonObject root)
 
 // deserializes mode names string into JsonArray
 // also removes effect data extensions (@...) from deserialised names
-// bypassHide=true returns real names for user-hidden effects (used by /settings/fx)
-void serializeModeNames(JsonArray arr, bool bypassHide)
+void serializeModeNames(JsonArray arr)
 {
   char lineBuffer[256];
   for (size_t i = 0; i < strip.getModeCount(); i++) {
-    if (!bypassHide && isFxHidden((uint8_t)i)) {
-      arr.add("RSVD");
-      continue;
-    }
     strncpy_P(lineBuffer, strip.getModeData(i), sizeof(lineBuffer)/sizeof(char)-1);
     lineBuffer[sizeof(lineBuffer)/sizeof(char)-1] = '\0'; // terminate string
     if (lineBuffer[0] != 0) {
@@ -1355,7 +1366,7 @@ void serveJson(AsyncWebServerRequest* request)
     case json_target::palettes:
       serializePalettes(lDoc, request->hasParam(F("page")) ? request->getParam(F("page"))->value().toInt() : 0); break;
     case json_target::effects:
-      serializeModeNames(lDoc, request->hasParam(F("all"))); break;
+      serializeModeNames(lDoc); break;
     case json_target::networks:
       serializeNetworks(lDoc); break;
     case json_target::config:

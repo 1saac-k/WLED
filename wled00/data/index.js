@@ -24,6 +24,7 @@ var plJson = {}; // array of playlists
 var pN = "", pI = 0, pNum = 0;
 var pmt = 1, pmtLS = 0;
 var lastinfo = {};
+var favoriteFx = new Set(); // user-favorited effect ids (mirrored from info.fxfav)
 var isM = false, mw = 0, mh=0;
 var bsOpts = null; // blending style options snapshot, used for dynamic filtering based on matrix mode (iOS compatibility)
 var ws, wsRpt=0;
@@ -643,6 +644,17 @@ function populatePresets(fromls)
 
 function parseInfo(i) {
 	lastinfo = i;
+	if (Array.isArray(i.fxfav)) {
+		const next = new Set(i.fxfav);
+		// only re-render picker if the set actually changed (server echoes our toggles)
+		if (next.size !== favoriteFx.size || [...next].some(id => !favoriteFx.has(id))) {
+			favoriteFx = next;
+			if (eJson && eJson.length && gId('fxlist')) {
+				populateEffects();
+				updateSelectedFx();
+			}
+		}
+	}
 	var name = i.name;
 	gId('namelabel').innerHTML = name;
 	if (!name.match(/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\u3131-\uD79D]/))
@@ -930,18 +942,23 @@ function populateEffects()
 	var effects = eJson;
 	var html = "";
 
-	effects.shift(); // temporary remove solid
-	for (let i = 0; i < effects.length; i++) {
-		effects[i] = {
-			id: effects[i][0],
-			name:effects[i][1]
-		};
+	// Normalize once: /json/effects arrives as [[id,name],...] from Object.entries.
+	// After the first render eJson holds [{id,name},...] already sorted, so subsequent
+	// calls (e.g. when favorites change) can skip the reshape.
+	if (effects.length && Array.isArray(effects[0])) {
+		effects.shift(); // temporary remove solid
+		for (let i = 0; i < effects.length; i++) {
+			effects[i] = {
+				id: parseInt(effects[i][0]),
+				name: effects[i][1]
+			};
+		}
+		effects.sort((a,b) => (a.name).localeCompare(b.name));
+		effects.unshift({
+			"id": 0,
+			"name": "Solid"
+		});
 	}
-	effects.sort((a,b) => (a.name).localeCompare(b.name));
-	effects.unshift({
-		"id": 0,
-		"name": "Solid"
-	});
 
 	for (let ef of effects) {
 		// add slider and color control to setFX (used by requestjson)
@@ -1081,6 +1098,11 @@ function genPalPrevCss(id)
 
 function generateListItemHtml(listName, id, name, clickAction, extraHtml = '', effectPar = '')
 {
+	let fav = '';
+	if (listName === 'fx') {
+		let on = favoriteFx.has(id);
+		fav = `<span class="fxfav${on?' on':''}" title="${on?'Unfavorite':'Favorite'}" onclick="event.preventDefault();event.stopPropagation();toggleFxFavorite(${id})">${on?'&#11088;':'&#9734;'}</span>`;
+	}
 	return `<div class="lstI${id==0?' sticky':''}" data-id="${id}" ${effectPar===''?'':'data-opt="'+effectPar+'" '}onClick="${clickAction}(${id})">`+
 		`<label title="(${id})" class="radio schkl" onclick="event.preventDefault()">`+ // (#1984)
 			`<input type="radio" value="${id}" name="${listName}">`+
@@ -1090,7 +1112,17 @@ function generateListItemHtml(listName, id, name, clickAction, extraHtml = '', e
 			`</div>`+
 		`</label>`+
 		extraHtml +
+		fav +
 	`</div>`;
+}
+
+function toggleFxFavorite(id)
+{
+	if (favoriteFx.has(id)) favoriteFx.delete(id);
+	else favoriteFx.add(id);
+	populateEffects();   // re-render so the star (and, later, the filter) update
+	updateSelectedFx();  // re-apply current selection styling after innerHTML rewrite
+	requestJson({"fxfav": [...favoriteFx]});
 }
 
 function btype(b)

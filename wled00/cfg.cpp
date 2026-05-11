@@ -764,14 +764,14 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
     needsSave = !UsermodManager::readFromConfig(usermods_settings);
   }
 
-  // hidden effects: load id list into bitmap
+  // favorite effects: load id list into bitmap
   JsonObject fx = doc["fx"];
-  JsonArray fxHidden = fx["hidden"];
-  if (!fxHidden.isNull()) {
-    for (size_t i = 0; i < 8; i++) hiddenFxMask[i] = 0;
-    for (JsonVariant v : fxHidden) {
+  JsonArray fxFavorites = fx["favorites"];
+  if (!fxFavorites.isNull()) {
+    for (size_t i = 0; i < 8; i++) favoriteFxMask[i] = 0;
+    for (JsonVariant v : fxFavorites) {
       uint8_t id = v.as<uint8_t>();
-      if (id != 0) setFxHidden(id, true); // never hide Solid (id 0)
+      setFxFavorite(id, true);
     }
   }
 
@@ -1273,10 +1273,10 @@ void serializeConfig(JsonObject root) {
   #endif
 
   JsonObject fx = root.createNestedObject("fx");
-  JsonArray fxHidden = fx.createNestedArray("hidden");
+  JsonArray fxFavorites = fx.createNestedArray("favorites");
   uint16_t maxId = strip.getModeCount();
   if (maxId > 256) maxId = 256;
-  for (uint16_t id = 1; id < maxId; id++) if (isFxHidden(id)) fxHidden.add((uint8_t)id);
+  for (uint16_t id = 0; id < maxId; id++) if (isFxFavorite(id)) fxFavorites.add((uint8_t)id);
 
   JsonObject usermods_settings = root.createNestedObject("um");
   UsermodManager::addToConfig(usermods_settings);

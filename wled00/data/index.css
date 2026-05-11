@@ -1410,6 +1410,28 @@ dialog {
 	z-index: -1;
 }
 
+/* favorite (star) toggle on effect picker rows */
+.fxfav {
+	position: absolute;
+	top: 0;
+	right: 0;
+	padding: 8px 12px;
+	cursor: pointer;
+	font-size: 16px;
+	line-height: 24px;
+	user-select: none;
+	opacity: 0.45;
+	color: var(--c-f);
+}
+.fxfav.on {
+	opacity: 1;
+}
+.fxfav:hover {
+	opacity: 1;
+	background: var(--c-6);
+	border-radius: 100%;
+}
+
 /* find/search element */
 .fnd {
 	position: relative;
