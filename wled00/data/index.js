@@ -25,7 +25,7 @@ var pN = "", pI = 0, pNum = 0;
 var pmt = 1, pmtLS = 0;
 var lastinfo = {};
 var favoriteFx = new Set(); // user-favorited effect ids (mirrored from info.fxfav)
-var onlyFavoritesFx = false; // when true, non-favorites are treated as RSVD in the picker
+var onlyFavoritesFx = false; // UI-only picker filter: when true, non-favorite effects are skipped in the list
 var isM = false, mw = 0, mh=0;
 var bsOpts = null; // blending style options snapshot, used for dynamic filtering based on matrix mode (iOS compatibility)
 var ws, wsRpt=0;
@@ -964,13 +964,13 @@ function populateEffects()
 	for (let ef of effects) {
 		// add slider and color control to setFX (used by requestjson)
 		let id = ef.id;
-		// "Favorites only" reuses the RSVD convention: mask non-favorites
-		// (except Solid, id=0, which is always kept) so the existing
-		// `name.indexOf("RSVD") < 0` filter below skips them.
-		let realName = (onlyFavoritesFx && id !== 0 && !favoriteFx.has(id)) ? "RSVD" : ef.name;
-		let nm = realName+" ";
+		// "Only favorites" is a UI-side picker filter: skip non-favorites here.
+		// Solid (id 0) is always kept so the list is never empty. This filter is
+		// purely client-side -- the effect is still fully selectable via JSON API.
+		if (onlyFavoritesFx && id !== 0 && !favoriteFx.has(id)) continue;
+		let nm = ef.name+" ";
 		let fd = "";
-		if (realName.indexOf("RSVD") < 0) {
+		if (ef.name.indexOf("RSVD") < 0) {
 			if (Array.isArray(fxdata) && fxdata.length>id) {
 				if (fxdata[id].length==0) fd = ";;!;1"
 				else fd = fxdata[id];
@@ -3035,7 +3035,7 @@ function filterFx() {
 		const listItemName = listItem.querySelector('.lstIname').innerText;
 		let hide = false;
 		gId("filters").querySelectorAll("input[type=checkbox]").forEach((e) => {
-			if (e.id === "filterFavChk") return; // favorites filter is applied via RSVD path in populateEffects
+			if (e.id === "filterFavChk") return; // favorites filter re-renders the list in populateEffects
 			if (e.checked && !listItemName.includes(e.dataset.flt)) hide = i > 0 /*true*/;
 		});
 		listItem.style.display = hide && !listItem.classList.contains("selected") ? 'none' : '';
