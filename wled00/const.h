@@ -25,6 +25,8 @@ constexpr size_t  WLED_MAX_USERMOD_PALETTES     = WLED_USERMOD_PALETTE_ID_BASE -
 #endif
 #define WLED_MAX_CUSTOM_PALETTE_GAP 20 // max number of empty palette files in a row before stopping to look for more (20 takes 100ms)
 
+#define WLED_MAX_FAVORITE_FX 128 // user-favorited effect IDs, stored sparsely on FS to avoid resident RAM (forward-compatible with 16-bit effect IDs)
+
 // You can define custom product info from build flags.
 // This is useful to allow API consumer to identify what type of WLED version
 // they are interacting with. Be aware that changing this might cause some third

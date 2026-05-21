@@ -433,16 +433,9 @@ bool deserializeState(JsonObject root, byte callMode, byte presetId)
     if (presetsModifiedTime == 0) presetsModifiedTime = timein;
   }
 
-  // user-favorited effect ids (bitmap-backed). Accepts a full array; absent = no change.
+  // user-favorited effect ids (persisted to /fav.dat). Accepts a full array; absent = no change.
   JsonArray fxFavArr = root[F("fxfav")];
-  if (!fxFavArr.isNull()) {
-    for (size_t i = 0; i < 8; i++) favoriteFxMask[i] = 0;
-    for (JsonVariant v : fxFavArr) {
-      int id = v.as<int>();
-      if (id >= 0 && id < 256) setFxFavorite((uint8_t)id, true);
-    }
-    configNeedsWrite = true;
-  }
+  if (!fxFavArr.isNull()) writeFavoritesArray(fxFavArr);
 
   if (root[F("psave")].isNull()) doReboot = root[F("rb")] | doReboot;
 
@@ -784,11 +777,19 @@ void serializeInfo(JsonObject root)
   #endif
 
   root[F("fxcount")] = strip.getModeCount();
-  // user-favorited effect ids (bitmap-backed, capped at 256)
+  // user-favorited effect ids (read from /fav.dat on demand; no resident state)
   JsonArray fxFav = root.createNestedArray(F("fxfav"));
-  uint16_t fxMax = strip.getModeCount();
-  if (fxMax > 256) fxMax = 256;
-  for (uint16_t id = 0; id < fxMax; id++) if (isFxFavorite((uint8_t)id)) fxFav.add((uint8_t)id);
+  {
+    uint8_t buf[WLED_MAX_FAVORITE_FX * 2];
+    size_t bytes = 0;
+    File f = WLED_FS.open("/fav.dat", "r");
+    if (f) { bytes = f.read(buf, sizeof(buf)); f.close(); }
+    size_t count = bytes / 2;
+    for (size_t i = 0; i < count; i++) {
+      uint16_t id = (uint16_t)buf[i*2] | ((uint16_t)buf[i*2+1] << 8);
+      fxFav.add(id);
+    }
+  }
   root[F("palcount")] = getPaletteCount();
   root[F("cpalcount")] = customPalettes.size();   // number of user custom palettes (includes gray placeholders)
   root[F("umpalcount")] = usermodPalettes.size(); // number of usermod-registered palettes
@@ -1198,6 +1199,40 @@ void serializePins(JsonObject root)
       }
     }
   }
+}
+
+// Persist user-favorited effect IDs to /fav.dat.
+// Format: packed little-endian uint16_t IDs, length implied by file size.
+// On-disk-only storage avoids any resident RAM footprint; this writer is the
+// single source of truth used by both deserializeState and boot-time migration.
+// Input is deduped, ascending-sorted, and capped at WLED_MAX_FAVORITE_FX.
+void writeFavoritesArray(JsonArray src)
+{
+  uint16_t ids[WLED_MAX_FAVORITE_FX];
+  size_t count = 0;
+  for (JsonVariant v : src) {
+    if (count >= WLED_MAX_FAVORITE_FX) break;
+    long id = v.as<long>();
+    if (id < 0 || id > 0xFFFF) continue;
+    bool dup = false;
+    for (size_t j = 0; j < count; j++) if (ids[j] == (uint16_t)id) { dup = true; break; }
+    if (!dup) ids[count++] = (uint16_t)id;
+  }
+  // insertion sort (count <= 128)
+  for (size_t i = 1; i < count; i++) {
+    uint16_t x = ids[i]; size_t j = i;
+    while (j > 0 && ids[j-1] > x) { ids[j] = ids[j-1]; j--; }
+    ids[j] = x;
+  }
+  File f = WLED_FS.open("/fav.dat", "w");
+  if (!f) return;
+  uint8_t bytes[WLED_MAX_FAVORITE_FX * 2];
+  for (size_t i = 0; i < count; i++) {
+    bytes[i*2]   = (uint8_t)(ids[i] & 0xFF);
+    bytes[i*2+1] = (uint8_t)((ids[i] >> 8) & 0xFF);
+  }
+  f.write(bytes, count * 2);
+  f.close();
 }
 
 // deserializes mode names string into JsonArray

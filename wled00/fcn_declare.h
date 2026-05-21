@@ -176,6 +176,7 @@ void serializeSegment(const JsonObject& root, const Segment& seg, byte id, bool 
 void serializeState(JsonObject root, bool forPreset = false, bool includeBri = true, bool segmentBounds = true, bool selectedSegmentsOnly = false);
 void serializeInfo(JsonObject root);
 void serializeModeNames(JsonArray arr);
+void writeFavoritesArray(JsonArray src); // persist user-favorited effect IDs to /fav.dat (dedup+sort+cap)
 void serializePins(JsonObject root);
 void serveJson(AsyncWebServerRequest* request);
 #ifdef WLED_ENABLE_JSONLIVE

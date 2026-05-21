@@ -764,14 +764,13 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
     needsSave = !UsermodManager::readFromConfig(usermods_settings);
   }
 
-  // favorite effects: load id list into bitmap
-  JsonObject fx = doc["fx"];
-  JsonArray fxFavorites = fx["favorites"];
-  if (!fxFavorites.isNull()) {
-    for (size_t i = 0; i < 8; i++) favoriteFxMask[i] = 0;
-    for (JsonVariant v : fxFavorites) {
-      uint8_t id = v.as<uint8_t>();
-      setFxFavorite(id, true);
+  // favorite effects: one-shot migration of legacy cfg.fx.favorites into /fav.dat.
+  // Only at boot, and only if /fav.dat does not yet exist (canonical store wins).
+  if (fromFS) {
+    JsonObject fx = doc["fx"];
+    JsonArray fxFavorites = fx["favorites"];
+    if (!fxFavorites.isNull() && !WLED_FS.exists("/fav.dat")) {
+      writeFavoritesArray(fxFavorites);
     }
   }
 
@@ -1272,11 +1271,7 @@ void serializeConfig(JsonObject root) {
   dmx[F("e131proxy")] = e131ProxyUniverse;
   #endif
 
-  JsonObject fx = root.createNestedObject("fx");
-  JsonArray fxFavorites = fx.createNestedArray("favorites");
-  uint16_t maxId = strip.getModeCount();
-  if (maxId > 256) maxId = 256;
-  for (uint16_t id = 0; id < maxId; id++) if (isFxFavorite(id)) fxFavorites.add((uint8_t)id);
+  // user-favorited effect ids are stored separately in /fav.dat (not in cfg.json)
 
   JsonObject usermods_settings = root.createNestedObject("um");
   UsermodManager::addToConfig(usermods_settings);
