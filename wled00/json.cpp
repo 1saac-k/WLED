@@ -1201,11 +1201,9 @@ void serializePins(JsonObject root)
   }
 }
 
-// Persist user-favorited effect IDs to /fav.dat.
-// Format: packed little-endian uint16_t IDs, length implied by file size.
-// On-disk-only storage avoids any resident RAM footprint; this writer is the
-// single source of truth used by both deserializeState and boot-time migration.
-// Input is deduped, ascending-sorted, and capped at WLED_MAX_FAVORITE_FX.
+// Persist user-favorited effect IDs to /fav.dat as packed little-endian
+// uint16_t (length implied by file size). Input is deduped, ascending-sorted,
+// and capped at WLED_MAX_FAVORITE_FX.
 void writeFavoritesArray(JsonArray src)
 {
   uint16_t ids[WLED_MAX_FAVORITE_FX];

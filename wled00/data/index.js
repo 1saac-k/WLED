@@ -1125,8 +1125,8 @@ function toggleFxFavorite(id)
 {
 	if (favoriteFx.has(id)) favoriteFx.delete(id);
 	else favoriteFx.add(id);
-	populateEffects();   // re-render so the star (and, later, the filter) update
-	updateSelectedFx();  // re-apply current selection styling after innerHTML rewrite
+	populateEffects();   // re-render so star + filter reflect new state
+	updateSelectedFx();  // re-apply selection after innerHTML rewrite
 	requestJson({"fxfav": [...favoriteFx]});
 }
 
