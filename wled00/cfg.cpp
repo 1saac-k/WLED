@@ -764,16 +764,6 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
     needsSave = !UsermodManager::readFromConfig(usermods_settings);
   }
 
-  // favorite effects: one-shot migration of legacy cfg.fx.favorites into /fav.dat.
-  // Only at boot, and only if /fav.dat does not yet exist (canonical store wins).
-  if (fromFS) {
-    JsonObject fx = doc["fx"];
-    JsonArray fxFavorites = fx["favorites"];
-    if (!fxFavorites.isNull() && !WLED_FS.exists("/fav.dat")) {
-      writeFavoritesArray(fxFavorites);
-    }
-  }
-
   if (fromFS) return needsSave;
   // if from /json/cfg
   doReboot = doc[F("rb")] | doReboot;
@@ -1270,8 +1260,6 @@ void serializeConfig(JsonObject root) {
 
   dmx[F("e131proxy")] = e131ProxyUniverse;
   #endif
-
-  // user-favorited effect ids are stored separately in /fav.dat (not in cfg.json)
 
   JsonObject usermods_settings = root.createNestedObject("um");
   UsermodManager::addToConfig(usermods_settings);
