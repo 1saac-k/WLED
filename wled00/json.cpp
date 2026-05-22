@@ -1202,8 +1202,8 @@ void serializePins(JsonObject root)
 }
 
 // Persist user-favorited effect IDs to /fav.dat as packed little-endian
-// uint16_t (length implied by file size). Input is deduped, ascending-sorted,
-// and capped at WLED_MAX_FAVORITE_FX.
+// uint16_t (length implied by file size). Input is deduped and capped at
+// WLED_MAX_FAVORITE_FX.
 void writeFavoritesArray(JsonArray src)
 {
   uint16_t ids[WLED_MAX_FAVORITE_FX];
@@ -1215,12 +1215,6 @@ void writeFavoritesArray(JsonArray src)
     bool dup = false;
     for (size_t j = 0; j < count; j++) if (ids[j] == (uint16_t)id) { dup = true; break; }
     if (!dup) ids[count++] = (uint16_t)id;
-  }
-  // insertion sort (count <= 128)
-  for (size_t i = 1; i < count; i++) {
-    uint16_t x = ids[i]; size_t j = i;
-    while (j > 0 && ids[j-1] > x) { ids[j] = ids[j-1]; j--; }
-    ids[j] = x;
   }
   File f = WLED_FS.open("/fav.dat", "w");
   if (!f) return;
