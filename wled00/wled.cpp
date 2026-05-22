@@ -480,6 +480,7 @@ void WLED::setup()
       resetConfig();
     }
   }
+  if(!verifyFavorites()) restoreFavorites();
   DEBUG_PRINTLN(F("Reading config"));
   bool needsCfgSave = deserializeConfigFromFS();
   DEBUG_PRINTF_P(PSTR("heap %u\n"), getFreeHeapSize());

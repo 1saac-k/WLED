@@ -1,5 +1,7 @@
 #include "wled.h"
 
+static const char s_fav_json[] PROGMEM = "/fav.json";
+
 #define JSON_PATH_STATE      1
 #define JSON_PATH_INFO       2
 #define JSON_PATH_STATE_INFO 3
@@ -433,7 +435,7 @@ bool deserializeState(JsonObject root, byte callMode, byte presetId)
     if (presetsModifiedTime == 0) presetsModifiedTime = timein;
   }
 
-  // user-favorited effect ids (persisted to /fav.dat). Accepts a full array; absent = no change.
+  // user-favorited effect ids (persisted to /fav.json). Accepts a full array; absent = no change.
   JsonArray fxFavArr = root[F("fxfav")];
   if (!fxFavArr.isNull()) writeFavoritesArray(fxFavArr);
 
@@ -777,17 +779,16 @@ void serializeInfo(JsonObject root)
   #endif
 
   root[F("fxcount")] = strip.getModeCount();
-  // user-favorited effect ids (from /fav.dat)
+  // user-favorited effect ids (from /fav.json)
   JsonArray fxFav = root.createNestedArray(F("fxfav"));
   {
-    uint8_t buf[WLED_MAX_FAVORITE_FX * 2];
-    size_t bytes = 0;
-    File f = WLED_FS.open("/fav.dat", "r");
-    if (f) { bytes = f.read(buf, sizeof(buf)); f.close(); }
-    size_t count = bytes / 2;
-    for (size_t i = 0; i < count; i++) {
-      uint16_t id = (uint16_t)buf[i*2] | ((uint16_t)buf[i*2+1] << 8);
-      fxFav.add(id);
+    File f = WLED_FS.open(FPSTR(s_fav_json), "r");
+    if (f) {
+      DynamicJsonDocument tmp(JSON_ARRAY_SIZE(WLED_MAX_FAVORITE_FX) + 64);
+      if (deserializeJson(tmp, f) == DeserializationError::Ok) {
+        for (JsonVariant v : tmp.as<JsonArray>()) fxFav.add(v.as<uint16_t>());
+      }
+      f.close();
     }
   }
   root[F("palcount")] = getPaletteCount();
@@ -1201,9 +1202,13 @@ void serializePins(JsonObject root)
   }
 }
 
-// Persist user-favorited effect IDs to /fav.dat as packed little-endian
-// uint16_t (length implied by file size). Input is deduped and capped at
-// WLED_MAX_FAVORITE_FX.
+bool backupFavorites()  { return backupFile(s_fav_json); }
+bool restoreFavorites() { return restoreFile(s_fav_json); }
+bool verifyFavorites()  { return validateJsonFile(s_fav_json); }
+
+// Persist user-favorited effect IDs to /fav.json as a bare JSON integer array.
+// Input is deduped and capped at WLED_MAX_FAVORITE_FX. Existing /fav.json is
+// snapshotted to /bkp.fav.json before being overwritten (matches cfg backup flow).
 void writeFavoritesArray(JsonArray src)
 {
   uint16_t ids[WLED_MAX_FAVORITE_FX];
@@ -1216,14 +1221,15 @@ void writeFavoritesArray(JsonArray src)
     for (size_t j = 0; j < count; j++) if (ids[j] == (uint16_t)id) { dup = true; break; }
     if (!dup) ids[count++] = (uint16_t)id;
   }
-  File f = WLED_FS.open("/fav.dat", "w");
+  backupFavorites();
+  File f = WLED_FS.open(FPSTR(s_fav_json), "w");
   if (!f) return;
-  uint8_t bytes[WLED_MAX_FAVORITE_FX * 2];
+  f.print('[');
   for (size_t i = 0; i < count; i++) {
-    bytes[i*2]   = (uint8_t)(ids[i] & 0xFF);
-    bytes[i*2+1] = (uint8_t)((ids[i] >> 8) & 0xFF);
+    if (i) f.print(',');
+    f.print(ids[i]);
   }
-  f.write(bytes, count * 2);
+  f.print(']');
   f.close();
 }
 
