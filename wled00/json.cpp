@@ -777,7 +777,7 @@ void serializeInfo(JsonObject root)
   #endif
 
   root[F("fxcount")] = strip.getModeCount();
-  // user-favorited effect ids (read from /fav.dat on demand; no resident state)
+  // user-favorited effect ids (from /fav.dat)
   JsonArray fxFav = root.createNestedArray(F("fxfav"));
   {
     uint8_t buf[WLED_MAX_FAVORITE_FX * 2];
