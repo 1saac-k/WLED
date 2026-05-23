@@ -1202,13 +1202,8 @@ void serializePins(JsonObject root)
   }
 }
 
-bool backupFavorites()  { return backupFile(s_fav_json); }
-bool restoreFavorites() { return restoreFile(s_fav_json); }
-bool verifyFavorites()  { return validateJsonFile(s_fav_json); }
-
 // Persist user-favorited effect IDs to /fav.json as a bare JSON integer array.
-// Input is deduped and capped at WLED_MAX_FAVORITE_FX. Existing /fav.json is
-// snapshotted to /bkp.fav.json before being overwritten (matches cfg backup flow).
+// Input is deduped and capped at WLED_MAX_FAVORITE_FX.
 void writeFavoritesArray(JsonArray src)
 {
   uint16_t ids[WLED_MAX_FAVORITE_FX];
@@ -1221,7 +1216,6 @@ void writeFavoritesArray(JsonArray src)
     for (size_t j = 0; j < count; j++) if (ids[j] == (uint16_t)id) { dup = true; break; }
     if (!dup) ids[count++] = (uint16_t)id;
   }
-  backupFavorites();
   File f = WLED_FS.open(FPSTR(s_fav_json), "w");
   if (!f) return;
   f.print('[');

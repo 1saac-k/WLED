@@ -177,9 +177,6 @@ void serializeState(JsonObject root, bool forPreset = false, bool includeBri = t
 void serializeInfo(JsonObject root);
 void serializeModeNames(JsonArray arr);
 void writeFavoritesArray(JsonArray src); // persist user-favorited effect IDs to /fav.json (dedup+cap)
-bool backupFavorites();
-bool restoreFavorites();
-bool verifyFavorites();
 void serializePins(JsonObject root);
 void serveJson(AsyncWebServerRequest* request);
 #ifdef WLED_ENABLE_JSONLIVE
